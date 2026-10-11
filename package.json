@@ -1,13 +1,13 @@
 {
 	"name": "vscode-nbt",
-	"displayName": "NBT Viewer — Modded Resources",
+	"displayName": "NBT Viewer — Modded Block Support",
 	"description": "View Minecraft NBT and 3D structures with local mod and resource pack assets",
-	"version": "0.11.4",
+	"version": "0.11.5",
 	"preview": true,
 	"publisher": "hi4444",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/hi4444/vscode-nbt.git"
+		"url": "https://github.com/hi4444/vscode-nbt-modded-block-support.git"
 	},
 	"engines": {
 		"vscode": "^1.85.0"

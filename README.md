@@ -1,4 +1,4 @@
-# NBT Viewer
+# NBT Viewer — Modded Block Support
 VSCode extension to view Minecraft NBT files. For structure files, this shows a 3D block view.
 
 This fork extends [Misode's NBT Viewer](https://github.com/misode/vscode-nbt) with local Minecraft instance, mod JAR and resource pack assets in its existing 3D viewer. Upstream NBT editing and supported file formats remain available. Requires VS Code 1.85 or later.
@@ -71,7 +71,7 @@ npm run package
 
 On Windows browser tests default to installed Edge; set `NBT_BROWSER_CHANNEL=chromium` to use Playwright Chromium. `npm run dev` watches the two existing Rollup entry points. Run the extension in a VS Code Extension Development Host using this folder.
 
-Packaging produces `vscode-nbt-0.11.4.vsix`. In VS Code run **Extensions: Install from VSIX…**, choose the file, reload VS Code, then select an instance. Disable the upstream NBT Viewer while testing this fork because the editor ID is intentionally preserved. Packaging does not publish to the Marketplace. This fork is not an official upstream release.
+Packaging produces `vscode-nbt-0.11.5.vsix`. In VS Code run **Extensions: Install from VSIX…**, choose the file, reload VS Code, then select an instance. Disable the upstream NBT Viewer while testing this fork because the editor ID is intentionally preserved. Packaging does not publish to the Marketplace. This fork is not an official upstream release.
 
 See [implementation notes](docs/IMPLEMENTATION.md) and [reproducible test fixtures](docs/TESTING.md). The MIT license and upstream attribution are retained.
 
