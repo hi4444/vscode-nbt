@@ -33,3 +33,32 @@ Structure building has eight additional unit tests covering blank gzip files, pa
 For a manual build check, run **NBT Viewer: New NBT Structure**, select the Minecraft version and save it. Select the modpack, open **3D → Build**, search a block, and place it on the floor or at coordinates. Add a neighbour by clicking a face, replace/erase it, save and reopen, then undo/redo. Hold a movement key and click a control or switch applications: the camera should stop. Also verify editing is disabled for read-only and unsupported build formats.
 
 Development uses Node 22+ and the checked-in lockfile. The runtime's tar parser and tooling were updated because the upstream lockfile had known vulnerabilities. No archive extraction is used for mod assets. No Marketplace publication is part of the workflow.
+
+## Verification added after the initial submission
+
+The renderer regression puts an opaque, narrow rod behind semi-transparent glass, with the glass listed first in NBT. Reversing the list must produce identical pixels. This test fails against the 0.11.3 bundle and passes with the sorted transparency pass. The CTM browser test toggles connected textures off and on, checks the rendered pixels change and return, and verifies the NBT stays unchanged.
+
+The multi-archive unit regression uses two separate mod JARs. Blocks with the same path keep separate namespace IDs, one model inherits from the other archive, each retains its own texture, signed rotations normalize correctly, and an unchanged reload reuses both archive indexes. CTM tests cover six face directions, preserved winding, shared geometry, block/property groups, metadata validation and sheets supplied by another archive.
+
+A local optional browser check exercises installed models from six mods together. Set NBT_MODS_DIR to the mods directory of a compatible Minecraft 1.21.1 installation:
+
+```powershell
+$env:NBT_MODS_DIR = 'C:\path\to\instance\mods'
+$env:NBT_BROWSER_CHANNEL = 'chromium'
+npm run test:render
+```
+
+The check selects ten block IDs, places them in one structure using the actual Build panel, waits for successful resource loading without warnings, and saves/reopens the NBT. It uses a minimal vanilla-parent fixture; it is not a complete test of the entire vanilla asset set. No installed mod assets are committed. The default CI run skips this optional check and runs the synthetic archive/WebGL fixtures.
+
+| Installed archive exercised | Blocks checked |
+| --- | --- |
+| Create 6.0.9 / MC 1.21.1 | andesite_casing, shaft |
+| Mekanism 10.7.18.84 / MC 1.21.1 | steel_casing, supercharged_coil, basic_induction_cell, basic_induction_provider |
+| AE2 19.2.17 | quartz_block |
+| Immersive Engineering 12.4.2-194 / MC 1.21.1 | storage_steel |
+| Industrial Foregoing 3.6.38 / MC 1.21 | machine_frame_pity |
+| Extreme Reactors 2.4.28 / MC 1.21.1 | reinforced_reactorfuelrod |
+
+This demonstrates static asset loading across six mods and CTM induction connections. It does not establish support for every block in those mods. For example, Mekanism's energy_cube custom loader still reports a fallback; it is not passed off as a successful model. The older AE2 15.4.10 cable check remains separately reproducible with NBT_AE2_JAR.
+
+The GitHub Actions workflow runs typechecks, lint, unit tests, production build, the default browser suite and VSIX packaging on Node 22. Local validation also ran the optional six-mod browser check.

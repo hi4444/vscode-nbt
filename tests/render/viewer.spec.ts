@@ -11,6 +11,7 @@ import type { Page } from '@playwright/test'
 import type { EditorMessage, NbtEdit } from '../../src/common/types'
 import { applyEdit, reverseEdit } from '../../src/common/Operations'
 import { createBlankStructure } from '../../src/editor/StructureEditing'
+import { setStructureBlock } from '../../src/editor/StructureEditing'
 import { ResourceIndex } from '../../src/assets/ResourceIndex'
 import { cube, instance, makePng, resources, zip } from '../fixtures'
 
@@ -18,6 +19,7 @@ let root: string
 let server: Server
 let url: string
 const index = new ResourceIndex()
+const installedBlocks = ['create:andesite_casing', 'create:shaft', 'mekanism:steel_casing', 'mekanism:supercharged_coil', 'ae2:quartz_block', 'immersiveengineering:storage_steel', 'industrialforegoing:machine_frame_pity', 'bigreactors:reinforced_reactorfuelrod', 'mekanism:basic_induction_cell', 'mekanism:basic_induction_provider']
 const structure = new Structure([5, 2, 3])
 structure.addBlock([0, 0, 0], 'minecraft:stone')
 structure.addBlock([1, 0, 0], 'demo:casing')
@@ -39,6 +41,16 @@ test.beforeAll(async () => {
 		'assets/demo/blockstates/slab.json': JSON.stringify({ variants: { '': { model: 'demo:block/slab' } } }),
 		'assets/demo/models/block/slab.json': JSON.stringify({ ...cube, elements: [{ from: [0, 0, 0], to: [16, 8, 16], faces: cube.elements![0].faces }] }),
 		'assets/demo/blockstates/custom.json': JSON.stringify({ variants: { '': { model: 'demo:block/custom' } } }),
+		'assets/demo/blockstates/glass.json': JSON.stringify({ variants: { '': { model: 'demo:block/glass' } } }),
+		'assets/demo/models/block/glass.json': JSON.stringify({ ...cube, textures: { all: 'demo:block/glass' } }),
+		'assets/demo/textures/block/glass.png': makePng([64, 64, 200, 100]),
+		'assets/demo/blockstates/connected.json': JSON.stringify({ variants: { '': { model: 'demo:block/connected' } } }),
+		'assets/demo/models/block/connected.json': JSON.stringify({ ...cube, textures: { all: 'demo:block/connected' } }),
+		'assets/demo/textures/block/connected.png': makePng([200, 32, 32, 255]),
+		'assets/demo/textures/block/connected.png.mcmeta': JSON.stringify({ ctm: { ctm_version: 1, type: 'CTM', textures: ['demo:ctm/connected'], extra: { connect_inside: true } } }),
+		'assets/demo/textures/ctm/connected.png': makePng([32, 200, 32, 255]),
+		'assets/demo/blockstates/rod.json': JSON.stringify({ variants: { '': { model: 'demo:block/rod' } } }),
+		'assets/demo/models/block/rod.json': JSON.stringify({ ...cube, elements: [{ from: [6, 0, 6], to: [10, 16, 10], faces: cube.elements![0].faces }] }),
 		'assets/demo/models/block/custom.json': JSON.stringify({ loader: 'forge:obj' }),
 		'assets/demo/blockstates/multipart.json': JSON.stringify({ multipart: [{ apply: { model: 'demo:block/pipe' } }, { when: { connected: 'true' }, apply: { model: 'demo:block/pipe', x: 90 } }] }),
 	})
@@ -48,15 +60,16 @@ test.beforeAll(async () => {
 		structure.addBlock([4, 0, 0], 'ae2:cable_bus', {}, cable)
 		structure.addBlock([4, 0, 1], 'ae2:cable_bus', {}, cable2)
 	}
-	await index.build(instance(root, [jar, ...(process.env.NBT_AE2_JAR ? [process.env.NBT_AE2_JAR] : [])]))
-	const editor = await fs.readFile(path.resolve('out/editor.js'))
+	const installedMods = process.env.NBT_MODS_DIR ? (await fs.readdir(process.env.NBT_MODS_DIR)).filter(name => /^(create-1|Mekanism-|appliedenergistics2-|ImmersiveEngineering-|industrialforegoing-|ExtremeReactors2-).*\.jar$/i.test(name)).map(name => path.join(process.env.NBT_MODS_DIR!, name)) : []
+	await index.build(instance(root, [jar, ...installedMods, ...(process.env.NBT_AE2_JAR ? [process.env.NBT_AE2_JAR] : [])]))
+	const editor = await fs.readFile(path.resolve(process.env.NBT_EDITOR_BUNDLE ?? 'out/editor.js'))
 	const css = await fs.readFile(path.resolve('res/editor.css'))
 	server = createServer((req, res) => {
 		if (req.url === '/editor.js') { res.setHeader('content-type', 'text/javascript'); res.end(editor); return }
 		if (req.url === '/editor.css') { res.setHeader('content-type', 'text/css'); res.end(css); return }
 		const model = { ...cube, textures: { all: 'minecraft:block/stone' } }
 		// White concrete intentionally has no property-summary entry, matching mcmeta.
-		const assets = { blockstates: { stone: { variants: { '': { model: 'minecraft:block/stone' } } }, white_concrete: { variants: { '': { model: 'minecraft:block/stone' } } } }, models: { 'block/stone': model } }
+		const assets = { blockstates: { stone: { variants: { '': { model: 'minecraft:block/stone' } } }, white_concrete: { variants: { '': { model: 'minecraft:block/stone' } } } }, models: { 'block/stone': model, 'block/block': {}, 'block/cube': model, 'block/cube_all': model, 'block/orientable': { ...cube, elements: [{ ...cube.elements![0], faces: Object.fromEntries(Object.keys(cube.elements![0].faces!).map(face => [face, { texture: `#${face === 'up' ? 'top' : face === 'down' ? 'bottom' : face === 'north' ? 'front' : 'side'}` }])) }] } } }
 		res.setHeader('content-type', 'text/html; charset=utf-8')
 		res.end(`<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' blob: data:; style-src 'self'; script-src 'nonce-test';"><link href="/editor.css" rel="stylesheet"><div class="panel-menu"></div><div class="find-widget"><div class="replace-expand"></div><div class="find-part"><div class="type-select"><select></select></div><input class="name-input"><input class="value-input"><div class="matches"></div><div class="previous-match"></div><div class="next-match"></div><div class="close-widget"></div></div><div class="replace-part"><div class="type-select"><select></select></div><input class="name-input"><input class="value-input"><div class="replace"></div><div class="replace-all"></div></div></div><div class="nbt-editor"></div><div class="file-info"></div><img class="texture-atlas" width="16" height="16" src="data:image/png;base64,${makePng([120, 120, 120, 255]).toString('base64')}"><script nonce="test">const stringifiedAssets=${JSON.stringify(JSON.stringify(assets))};const stringifiedBlocks=${JSON.stringify(JSON.stringify({ stone: [{}, {}] }))};const stringifiedUvmapping=${JSON.stringify(JSON.stringify({ 'block/stone': [0, 0, 16, 16] }))};</script><script nonce="test" src="/editor.js"></script>`)
 	})
@@ -138,8 +151,8 @@ test('production WebGL viewer renders archive assets, fallback geometry, search 
 })
 function assertCanvas(value: { error: number, width: number, height: number }) { expect(value.error).toBe(0); expect(value.width).toBeGreaterThan(0); expect(value.height).toBeGreaterThan(0) }
 
-async function editableFixture(page: Page, readOnly = false, size: [number, number, number] = [6, 4, 6], seed?: [number, number, number]) {
-	const file = createBlankStructure(3465, size)
+async function editableFixture(page: Page, readOnly = false, size: [number, number, number] = [6, 4, 6], seed?: [number, number, number], initial?: NbtFile) {
+	const file = initial ?? createBlankStructure(3465, size)
 	if (seed) {
 		const { setStructureBlock } = await import('../../src/editor/StructureEditing')
 		applyEdit(file, setStructureBlock(file, seed, 'demo:casing', {}))
@@ -181,6 +194,69 @@ function screenPoint(point: [number, number, number], size: [number, number, num
 	const clip = vec3.transformMat4(vec3.create(), point, mat4.multiply(mat4.create(), mat4.perspective(mat4.create(), 70 * Math.PI / 180, 1000 / 700, 0.1, 500), view))
 	return [(clip[0] + 1) * 500, (1 - clip[1]) * 350]
 }
+
+test('installed models from six mods render and can be built in the same structure', async ({ page }, testInfo) => {
+	test.skip(!process.env.NBT_MODS_DIR, 'Set NBT_MODS_DIR to a local mods directory; mod assets are not redistributed.')
+	const errors: string[] = []
+	page.on('pageerror', e => errors.push(e.message))
+	page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
+	const { file } = await editableFixture(page, false, [12, 3, 4])
+	await page.getByRole('button', { name: 'Build', exact: true }).click()
+	for (const [x, id] of installedBlocks.entries()) {
+		await page.getByPlaceholder('Find a block to place').fill(id)
+		await page.locator(`[data-block="${id}"]`).click()
+		await expect(page.getByRole('button', { name: 'Set block at coordinates', exact: true })).toBeEnabled()
+		await page.getByLabel('Build X', { exact: true }).fill(String(x))
+		await page.getByLabel('Build Z', { exact: true }).fill('1')
+		await page.getByRole('button', { name: 'Set block at coordinates', exact: true }).click()
+		await expect.poll(() => Structure.fromNbt(file.root).getBlock([x, 0, 1])?.state.getName().toString()).toBe(id)
+		await expect(page.locator('.resource-status')).toHaveText('Instance resources loaded')
+	}
+	const reopened = Structure.fromNbt(NbtFile.read(file.write()).root)
+	for (const [x, id] of installedBlocks.entries()) expect(reopened.getBlock([x, 0, 1])?.state.getName().toString()).toBe(id)
+	await page.getByRole('button', { name: 'Build', exact: true }).click()
+	await expect(page.locator('.resource-status')).toHaveText('Instance resources loaded')
+	await page.screenshot({ path: testInfo.outputPath('six-mods.png') })
+	expect(errors).toEqual([])
+})
+
+test('connected texture toggle changes joined faces and keeps edits reversible', async ({ page }, testInfo) => {
+	const file = createBlankStructure(3465, [4, 3, 4])
+	applyEdit(file, setStructureBlock(file, [1, 0, 1], 'demo:connected', {}))
+	applyEdit(file, setStructureBlock(file, [2, 0, 1], 'demo:connected', {}))
+	await editableFixture(page, true, [4, 3, 4], undefined, file)
+	const toggle = page.getByRole('button', { name: 'Connected textures', exact: true })
+	const canvas = page.locator('canvas.structure-3d').first()
+	await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+	const joined = PNG.sync.read(await canvas.screenshot({ path: testInfo.outputPath('connected-textures.png') }))
+	await toggle.click()
+	await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+	const plain = PNG.sync.read(await canvas.screenshot())
+	expect(plain.data.equals(joined.data)).toBe(false)
+	await toggle.click()
+	expect(PNG.sync.read(await canvas.screenshot()).data.equals(joined.data)).toBe(true)
+	expect(file.root.getList('blocks').length).toBe(2)
+})
+
+test('glass cannot hide rods behind it and rendering is independent of NBT block order', async ({ page }, testInfo) => {
+	const file = createBlankStructure(3465, [4, 3, 4])
+	// Put glass first, before the interior geometry, as exported structures can do.
+	applyEdit(file, setStructureBlock(file, [1, 0, 2], 'demo:glass', {}))
+	applyEdit(file, setStructureBlock(file, [1, 0, 1], 'demo:rod', {}))
+	applyEdit(file, setStructureBlock(file, [1, 1, 1], 'demo:rod', {}))
+	await editableFixture(page, true, [4, 3, 4], undefined, file)
+	const canvas = page.locator('canvas.structure-3d').first()
+	const first = PNG.sync.read(await canvas.screenshot({ path: testInfo.outputPath('rods-behind-glass.png') }))
+	let green = 0
+	for (let i = 0; i < first.data.length; i += 4) if (first.data[i + 1] > 70 && first.data[i + 1] > first.data[i] * 1.5 && first.data[i + 1] > first.data[i + 2] * 1.5) green++
+	expect(green).toBeGreaterThan(100)
+	const blocks = file.root.getList('blocks')
+	file.root.set('blocks', new NbtList([...blocks.getItems()].reverse()))
+	await page.reload()
+	await expect(page.locator('.resource-status')).toHaveText('Instance resources loaded')
+	const reversed = PNG.sync.read(await canvas.screenshot())
+	expect(reversed.data.equals(first.data)).toBe(true)
+})
 
 test('propertyless vanilla blocks appear in Build and can be placed and saved without a client JAR', async ({ page }) => {
 	const { file, messages } = await editableFixture(page)

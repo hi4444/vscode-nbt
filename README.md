@@ -17,6 +17,8 @@ Opening an NBT document asks for a modpack only when no pack is selected (`nbtVi
 
 Enabled packs are read from the instance's `options.txt`. Additional ZIP/directory packs can be added to `nbtViewer.resourcePacks`. Priority from low to high: local vanilla client archive, installed mod JARs in sorted filename order, enabled resource packs in `options.txt` order, additional packs in settings order. Last asset wins. Upstream versioned vanilla assets fill gaps where a local client JAR is unavailable.
 
+Use **Connected textures** to toggle neighbor-aware CTM v1 textures on full block faces. Other CTM layouts and runtime texture systems remain limited; see the compatibility table. Glass uses a sorted transparency pass so interior geometry does not disappear based on NBT block order.
+
 Use **Modded assets** to toggle vanilla-only rendering, **Reload assets** to refresh the open structure, and the block search box to outline matching namespaces/IDs (first 200 matches). Click a block to inspect its ID, NBT blockstate properties and missing-model warnings. Camera/navigation controls remain upstream's: drag left to rotate, drag middle/right to pan, wheel to zoom, WASD plus Space/Shift to move.
 
 The Explorer **NBT Resources** panel shows selected instance/version/loader, mod count, namespaces, packs, indexing status, cache counters and host resource errors. Browser model/texture failures are included in **NBT Viewer: Show Resource Diagnostics** and the structure status. Commands also include **Scan Installed Mods**, **Reload Modded Resources**, and **Clear Asset Cache**. File watchers invalidate changed archives and packs; manual reload rescans metadata and sources.
@@ -69,7 +71,7 @@ npm run package
 
 On Windows browser tests default to installed Edge; set `NBT_BROWSER_CHANNEL=chromium` to use Playwright Chromium. `npm run dev` watches the two existing Rollup entry points. Run the extension in a VS Code Extension Development Host using this folder.
 
-Packaging produces `vscode-nbt-0.11.3.vsix`. In VS Code run **Extensions: Install from VSIX…**, choose the file, reload VS Code, then select an instance. Disable the upstream NBT Viewer while testing this fork because the editor ID is intentionally preserved. Packaging does not publish to the Marketplace. This fork is not an official upstream release.
+Packaging produces `vscode-nbt-0.11.4.vsix`. In VS Code run **Extensions: Install from VSIX…**, choose the file, reload VS Code, then select an instance. Disable the upstream NBT Viewer while testing this fork because the editor ID is intentionally preserved. Packaging does not publish to the Marketplace. This fork is not an official upstream release.
 
 See [implementation notes](docs/IMPLEMENTATION.md) and [reproducible test fixtures](docs/TESTING.md). The MIT license and upstream attribution are retained.
 

@@ -1,5 +1,5 @@
-import type { BlockDefinitionProvider, BlockFlagsProvider, BlockModelProvider, BlockPropertiesProvider, StructureProvider, TextureAtlasProvider , Identifier, BlockModel} from 'deepslate'
-import { BlockDefinition, TextureAtlas, upperPowerOfTwo } from 'deepslate'
+import type { BlockDefinitionProvider, BlockFlagsProvider, BlockModelProvider, BlockPropertiesProvider, StructureProvider, TextureAtlasProvider , BlockModel} from 'deepslate'
+import { BlockDefinition, Identifier, TextureAtlas, upperPowerOfTwo } from 'deepslate'
 import type { AssetBundle, BlockstateJson, ModelJson } from '../assets/Types'
 import { errorText, resourceId, textureReference } from '../assets/Types'
 import { flattenModels, modelReferences } from '../assets/Validation'
@@ -10,6 +10,8 @@ import { CachedModel, GeometryCache } from './CachedModel'
 import { ae2Variants, isAe2Bus } from '../assets/Ae2'
 import type { BlockOptions } from '../assets/Types'
 import { blockOptions } from '../assets/BlockOptions'
+import { connectTextures } from './ConnectedTextures'
+import type { ConnectedSprite } from './ConnectedTextures'
 
 export class ResourceManager implements BlockDefinitionProvider, BlockModelProvider, BlockFlagsProvider, BlockPropertiesProvider, TextureAtlasProvider {
 	private blockDefinitions: Record<string, BlockDefinition> = Object.create(null)
@@ -24,6 +26,8 @@ export class ResourceManager implements BlockDefinitionProvider, BlockModelProvi
 	private currentBlock: ReturnType<StructureProvider['getBlock']> = null
 	private structure?: StructureProvider
 	private modded = false
+	connectedTextures = true
+	private readonly connectedSprites = new Map<string, ConnectedSprite>()
 	private tint: [number, number, number] = [1, 1, 1]
 	private readonly geometryCache = new GeometryCache()
 	readonly diagnostics = new Set<string>()
@@ -66,7 +70,7 @@ export class ResourceManager implements BlockDefinitionProvider, BlockModelProvi
 		return block ? { id, properties: block.properties, defaults: block.default } : this.baseDefinitions[id] ? blockOptions(id, this.baseDefinitions[id]) : undefined
 	}
 	private definition(value: BlockstateJson): BlockDefinition {
-		return new ModdedDefinition(value, () => Math.imul(this.position[0], 73428767) ^ Math.imul(this.position[1], 912931) ^ Math.imul(this.position[2], 438289), this.tint, this.report)
+		return new ModdedDefinition(value, () => Math.imul(this.position[0], 73428767) ^ Math.imul(this.position[1], 912931) ^ Math.imul(this.position[2], 438289), this.tint, this.report, undefined, mesh => this.connectedTextures && this.structure && this.currentBlock && this.connectedSprites.size ? connectTextures(mesh, this.position, this.currentBlock, this.structure, this.connectedSprites) : mesh)
 	}
 	private load(definitions: Record<string, BlockstateJson>, models: Record<string, ModelJson>): void {
 		this.geometryCache.clear()
@@ -90,6 +94,7 @@ export class ResourceManager implements BlockDefinitionProvider, BlockModelProvi
 	reset(): void {
 		this.modded = false
 		this.diagnostics.clear()
+		this.connectedSprites.clear()
 		this.tint = [1, 1, 1]
 		this.load(this.baseDefinitions, this.baseModels)
 		const width = upperPowerOfTwo(this.image.width)
@@ -163,7 +168,12 @@ export class ResourceManager implements BlockDefinitionProvider, BlockModelProvi
 		}
 		this.textureAtlas = new TextureAtlas(ctx.getImageData(0, 0, size, size), uv)
 		this.load(definitions, flat)
+		for (const [id, rule] of Object.entries(bundle.connectedTextures ?? {})) if (uv[id] && uv[rule.texture] && uv[rule.texture] !== uv['nbtviewer:missing']) {
+			const base = this.textureAtlas.getTextureUV(Identifier.parse(id)), sheet = this.textureAtlas.getTextureUV(Identifier.parse(rule.texture))
+			this.connectedSprites.set(base.join(','), { rule, base, sheet })
+		}
 		for (const id of Object.keys(bundle.blockstates)) this.blockDefinitions[id] = this.definition(bundle.blockstates[id])
+		for (const [id, state] of Object.entries(this.baseDefinitions)) if (modelReferences(state).some(ref => flat[ref]?.elements?.some(e => Object.values(e.faces ?? {}).some(face => bundle.connectedTextures?.[face.texture])))) this.blockDefinitions[id] = this.definition(definitions[id])
 	}
 	bind(structure: StructureProvider): StructureProvider {
 		this.structure = structure

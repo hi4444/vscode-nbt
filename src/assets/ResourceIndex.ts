@@ -6,6 +6,7 @@ import { errorText, LIMITS, resourceId, safeAssetPath, textureReference } from '
 import { modelReferences, validateBlockstate, validateModel } from './Validation'
 import { ae2CableItem, ae2Template } from './Ae2'
 import { blockOptions } from './BlockOptions'
+import { connectedTexture } from './ConnectedTextures'
 import { openArchive } from './Zip'
 
 interface Location { source: string, entry?: yauzl.Entry, fingerprint: string }
@@ -199,13 +200,19 @@ export class ResourceIndex {
 		for (const id of extraModels.slice(0, LIMITS.blocks)) await model(resourceId(id), [])
 		// Overrides may target vanilla textures even when their models remain upstream.
 		for (const id of attempted) { const [ns, p] = id.split(':'); const t = `${ns}:${p}`; if (this.index.has(`assets/${ns}/textures/${p}.png`)) textures.add(t) }
-		for (const id of [...textures].slice(0, LIMITS.textures)) {
+		let loadedTextures = 0
+		for (const id of textures) {
+			if (loadedTextures++ >= LIMITS.textures) { failure('Texture dependency limit reached'); break }
 			check()
 			try {
 				const [ns, p] = id.split(':'); const png = await this.read(`assets/${ns}/textures/${p}.png`)
 				if (!png) { if (ns !== 'minecraft') failure(`${id}: missing texture`); continue }
 				if (png.length < 24 || !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || png.readUInt32BE(16) < 1 || png.readUInt32BE(20) < 1 || png.readUInt32BE(16) > LIMITS.textureDimension || png.readUInt32BE(20) > LIMITS.textureDimension * 64 || png.readUInt32BE(16) * png.readUInt32BE(20) > 4 * 1024 * 1024) throw new Error('Invalid or oversized PNG')
 				bundle.textures[id] = png.toString('base64'); bytes += bundle.textures[id].length
+				try {
+					const rule = connectedTexture(await this.json(`assets/${ns}/textures/${p}.png.mcmeta`))
+					if (rule) { (bundle.connectedTextures ??= Object.create(null))[id] = rule; textures.add(rule.texture); bytes += JSON.stringify(rule).length }
+				} catch (e) { failure(`${id}: ${errorText(e)}; using base texture`) }
 			} catch (e) { failure(`${id}: ${errorText(e)}`) }
 		}
 		check()

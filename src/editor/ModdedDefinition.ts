@@ -7,7 +7,7 @@ import { chooseVariants } from '../assets/Validation'
 // Deepslate's provider API omits positions. ResourceManager supplies the current
 // block while ChunkBuilder iterates, keeping visible and picking choices identical.
 export class ModdedDefinition extends BlockDefinition {
-	constructor(private readonly json: BlockstateJson, private readonly seed: () => number, private readonly tint: [number, number, number], private readonly report: (message: string) => void, private readonly dynamic?: () => ModelVariant[] | undefined) { super(undefined, undefined) }
+	constructor(private readonly json: BlockstateJson, private readonly seed: () => number, private readonly tint: [number, number, number], private readonly report: (message: string) => void, private readonly dynamic?: () => ModelVariant[] | undefined, private readonly textures?: (mesh: Mesh) => Mesh) { super(undefined, undefined) }
 	getModelVariants(props: Record<string, string>) { return this.dynamic?.() ?? chooseVariants(this.json, props, this.seed()) }
 	getMesh(name: Identifier | undefined, props: Record<string, string>, atlas: TextureAtlasProvider, models: BlockModelProvider, cull: Cull): Mesh {
 		const mesh = new Mesh()
@@ -27,7 +27,8 @@ export class ModdedDefinition extends BlockDefinition {
 			mesh.merge(part.transform(t))
 		}
 		// Empty multipart is legitimate; missing or runtime models receive a fallback.
-		return mesh.transform(mat4.fromScaling(mat4.create(), [1 / 16, 1 / 16, 1 / 16]))
+		mesh.transform(mat4.fromScaling(mat4.create(), [1 / 16, 1 / 16, 1 / 16]))
+		return this.textures?.(mesh) ?? mesh
 	}
 }
 

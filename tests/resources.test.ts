@@ -57,6 +57,39 @@ test('indexes compressed JARs and cross-namespace parent dependencies without ex
 	assert.ok(index.stats.hits > before)
 	assert.ok(index.stats.cacheBytes <= LIMITS.cacheBytes)
 })
+
+test('separate mods share parents and textures, preserve IDs, and accept signed quarter-turns', async () => {
+	const a = path.join(root, 'multiple', 'alpha.jar'), b = path.join(root, 'multiple', 'beta.jar')
+	await zip(a, {
+		'assets/alpha/blockstates/machine.json': JSON.stringify({ variants: { 'facing=up': { model: 'alpha:block/machine', x: -90 }, 'facing=west': { model: 'alpha:block/machine', y: -450 } } }),
+		'assets/alpha/models/block/machine.json': JSON.stringify({ parent: 'beta:block/base', textures: { all: 'alpha:block/skin' } }),
+		'assets/alpha/textures/block/skin.png': png,
+	})
+	await zip(b, {
+		'assets/beta/blockstates/machine.json': JSON.stringify({ variants: { '': { model: 'beta:block/base' } } }),
+		'assets/beta/models/block/base.json': JSON.stringify({ ...cube, textures: { all: 'beta:block/skin' } }),
+		'assets/beta/textures/block/skin.png': png,
+	})
+	const index = new ResourceIndex()
+	await index.build(instance(root, [a, b]))
+	assert.deepEqual(index.catalog('machine', '', 0).ids, ['alpha:machine', 'beta:machine'])
+	assert.deepEqual(index.catalog('', 'beta', 0).ids, ['beta:machine'])
+	const bundle = await index.bundle(['alpha:machine', 'beta:machine'])
+	assert.deepEqual(bundle.diagnostics, [])
+	assert.equal(chooseVariants(bundle.blockstates['alpha:machine'], { facing: 'up' }, 0)[0].x, 270)
+	assert.equal(chooseVariants(bundle.blockstates['alpha:machine'], { facing: 'west' }, 0)[0].y, 270)
+	const errors: string[] = []
+	const flat = flattenModels(bundle.models, (_, message) => errors.push(message))
+	assert.deepEqual(errors, [])
+	assert.equal(flat['alpha:block/machine'].elements?.[0].faces?.up.texture, 'alpha:block/skin')
+	assert.equal(flat['beta:block/base'].elements?.[0].faces?.up.texture, 'beta:block/skin')
+	assert.throws(() => validateBlockstate({ variants: { '': { model: 'beta:block/base', y: 45 } } }))
+	assert.throws(() => validateBlockstate({ variants: { '': { model: 'beta:block/base', x: Infinity } } }))
+	const reads = index.stats.archivesRead
+	await index.build(instance(root, [a, b]))
+	assert.equal(index.stats.archivesRead, reads)
+	assert.equal(index.stats.archivesReused, 2)
+})
 test('loader discovery reads ZIP metadata, not mod code', async () => {
 	for (const [metadata, loader] of [['fabric.mod.json', 'fabric'], ['quilt.mod.json', 'quilt'], ['META-INF/mods.toml', 'forge'], ['META-INF/neoforge.mods.toml', 'neoforge']]) {
 		const directory = path.join(root, loader)

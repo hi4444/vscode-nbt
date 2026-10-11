@@ -21,7 +21,9 @@ export interface AssetBundle {
 	textures: Record<string, string>
 	diagnostics: string[]
 	tint: [number, number, number]
+	connectedTextures?: Record<string, ConnectedTexture>
 }
+export interface ConnectedTexture { texture: string, connectTo?: { block: string, properties?: Record<string, string> }[], ignoreStates: boolean, connectInside: boolean }
 export interface MinecraftInstance {
 	id: string
 	name: string
@@ -44,7 +46,7 @@ export function resourceId(value: string): string {
 }
 
 export function safeAssetPath(value: string): boolean {
-	return /^assets\/[a-z0-9_.-]+\/(blockstates|models|textures)\/[a-z0-9_./-]+\.(json|png)$/.test(value) && !value.split('/').some(p => !p || p === '.' || p === '..')
+	return /^assets\/[a-z0-9_.-]+\/(blockstates|models|textures)\/[a-z0-9_./-]+\.(json|png|png\.mcmeta)$/.test(value) && !value.split('/').some(p => !p || p === '.' || p === '..')
 }
 
 export function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error) }

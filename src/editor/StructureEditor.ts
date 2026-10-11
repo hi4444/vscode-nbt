@@ -415,7 +415,18 @@ export class StructureEditor implements EditorPanel {
 		create.className = 'btn'
 		create.textContent = 'New NBT structure'
 		create.addEventListener('click', () => this.vscode.postMessage({ type: 'newStructure', body: { dataVersion: this.file.root.getNumber('DataVersion') } }))
-		return [gridToggle, invisibleBlocksToggle, moddedToggle, reload, build, create, search]
+		const connected = document.createElement('button')
+		connected.className = this.resources.connectedTextures ? 'btn active' : 'btn'
+		connected.textContent = 'Connected textures'
+		connected.title = 'Join neighboring faces using supported CTM v1 texture metadata'
+		connected.setAttribute('aria-pressed', String(this.resources.connectedTextures))
+		connected.addEventListener('click', () => {
+			this.resources.connectedTextures = !this.resources.connectedTextures
+			connected.classList.toggle('active', this.resources.connectedTextures)
+			connected.setAttribute('aria-pressed', String(this.resources.connectedTextures))
+			this.buildStructure(); this.render()
+		})
+		return [gridToggle, invisibleBlocksToggle, moddedToggle, connected, reload, build, create, search]
 	}
 
 	private getViewMatrix() {

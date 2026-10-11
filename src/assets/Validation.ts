@@ -9,7 +9,11 @@ export function validateBlockstate(value: unknown): BlockstateJson {
 		if (Array.isArray(v)) { if (!v.length || v.length > 256) throw new Error('Invalid variant count'); v.forEach(entry); return }
 		if (!object(v) || typeof v.model !== 'string') throw new Error('Invalid model variant')
 		resourceId(v.model)
-		for (const angle of [v.x, v.y]) if (angle !== undefined && ![0, 90, 180, 270].includes(angle as number)) throw new Error('Invalid blockstate rotation')
+		for (const axis of ['x', 'y'] as const) if (v[axis] !== undefined) {
+			const angle = v[axis]
+			if (typeof angle !== 'number' || !Number.isSafeInteger(angle) || angle % 90 !== 0) throw new Error('Invalid blockstate rotation')
+			v[axis] = ((angle % 360) + 360) % 360
+		}
 		if (v.weight !== undefined && (typeof v.weight !== 'number' || !Number.isInteger(v.weight) || v.weight < 1 || v.weight > 1000000)) throw new Error('Invalid variant weight')
 	}
 	const condition = (c: unknown, depth: number): void => {

@@ -19,3 +19,4 @@ docs/TESTING.md
 playwright.config.*
 **/tsconfig.assets.json
 .eslintrc.js
+.github/**
