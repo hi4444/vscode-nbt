@@ -9,6 +9,7 @@ import { ModdedDefinition } from './ModdedDefinition'
 import { CachedModel, GeometryCache } from './CachedModel'
 import { ae2Variants, isAe2Bus } from '../assets/Ae2'
 import type { BlockOptions } from '../assets/Types'
+import { blockOptions } from '../assets/BlockOptions'
 
 export class ResourceManager implements BlockDefinitionProvider, BlockModelProvider, BlockFlagsProvider, BlockPropertiesProvider, TextureAtlasProvider {
 	private blockDefinitions: Record<string, BlockDefinition> = Object.create(null)
@@ -57,10 +58,12 @@ export class ResourceManager implements BlockDefinitionProvider, BlockModelProvi
 	getBlockProperties(id: Identifier) { return this.blocks.get(id.toString())?.properties ?? null }
 	getDefaultBlockProperties(id: Identifier) { return this.blocks.get(id.toString())?.default ?? null }
 	private vanillaBlockIds?: string[]
-	availableBlocks(): string[] { return [...(this.vanillaBlockIds ??= [...this.blocks.keys()].sort())] }
+	availableBlocks(): string[] { return [...(this.vanillaBlockIds ??= [...new Set([...this.blocks.keys(), ...Object.keys(this.baseDefinitions)])].sort())] }
 	blockOptions(id: string): BlockOptions | undefined {
 		const block = this.blocks.get(id)
-		return block ? { id, properties: block.properties, defaults: block.default } : undefined
+		// The property summary omits blocks without configurable properties.
+		// Their blockstates still make them valid brushes in the vanilla catalog.
+		return block ? { id, properties: block.properties, defaults: block.default } : this.baseDefinitions[id] ? blockOptions(id, this.baseDefinitions[id]) : undefined
 	}
 	private definition(value: BlockstateJson): BlockDefinition {
 		return new ModdedDefinition(value, () => Math.imul(this.position[0], 73428767) ^ Math.imul(this.position[1], 912931) ^ Math.imul(this.position[2], 438289), this.tint, this.report)

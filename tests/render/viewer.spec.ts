@@ -55,7 +55,8 @@ test.beforeAll(async () => {
 		if (req.url === '/editor.js') { res.setHeader('content-type', 'text/javascript'); res.end(editor); return }
 		if (req.url === '/editor.css') { res.setHeader('content-type', 'text/css'); res.end(css); return }
 		const model = { ...cube, textures: { all: 'minecraft:block/stone' } }
-		const assets = { blockstates: { stone: { variants: { '': { model: 'minecraft:block/stone' } } } }, models: { 'block/stone': model } }
+		// White concrete intentionally has no property-summary entry, matching mcmeta.
+		const assets = { blockstates: { stone: { variants: { '': { model: 'minecraft:block/stone' } } }, white_concrete: { variants: { '': { model: 'minecraft:block/stone' } } } }, models: { 'block/stone': model } }
 		res.setHeader('content-type', 'text/html; charset=utf-8')
 		res.end(`<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' blob: data:; style-src 'self'; script-src 'nonce-test';"><link href="/editor.css" rel="stylesheet"><div class="panel-menu"></div><div class="find-widget"><div class="replace-expand"></div><div class="find-part"><div class="type-select"><select></select></div><input class="name-input"><input class="value-input"><div class="matches"></div><div class="previous-match"></div><div class="next-match"></div><div class="close-widget"></div></div><div class="replace-part"><div class="type-select"><select></select></div><input class="name-input"><input class="value-input"><div class="replace"></div><div class="replace-all"></div></div></div><div class="nbt-editor"></div><div class="file-info"></div><img class="texture-atlas" width="16" height="16" src="data:image/png;base64,${makePng([120, 120, 120, 255]).toString('base64')}"><script nonce="test">const stringifiedAssets=${JSON.stringify(JSON.stringify(assets))};const stringifiedBlocks=${JSON.stringify(JSON.stringify({ stone: [{}, {}] }))};const stringifiedUvmapping=${JSON.stringify(JSON.stringify({ 'block/stone': [0, 0, 16, 16] }))};</script><script nonce="test" src="/editor.js"></script>`)
 	})
@@ -180,6 +181,18 @@ function screenPoint(point: [number, number, number], size: [number, number, num
 	const clip = vec3.transformMat4(vec3.create(), point, mat4.multiply(mat4.create(), mat4.perspective(mat4.create(), 70 * Math.PI / 180, 1000 / 700, 0.1, 500), view))
 	return [(clip[0] + 1) * 500, (1 - clip[1]) * 350]
 }
+
+test('propertyless vanilla blocks appear in Build and can be placed and saved without a client JAR', async ({ page }) => {
+	const { file, messages } = await editableFixture(page)
+	await page.getByRole('button', { name: 'Build', exact: true }).click()
+	await page.getByPlaceholder('Find a block to place').fill('minecraft:white_concrete')
+	await page.locator('[data-block="minecraft:white_concrete"]').click()
+	await expect(page.getByRole('button', { name: 'Set block at coordinates', exact: true })).toBeEnabled()
+	await page.getByRole('button', { name: 'Set block at coordinates', exact: true }).click()
+	await expect.poll(() => Structure.fromNbt(file.root).getBlock([0, 0, 0])?.state.getName().toString()).toBe('minecraft:white_concrete')
+	expect(Structure.fromNbt(NbtFile.read(file.write()).root).getBlock([0, 0, 0])?.state.getName().toString()).toBe('minecraft:white_concrete')
+	expect(messages.filter(m => m.type === 'getBlockOptions' && m.body.id === 'minecraft:white_concrete')).toHaveLength(0)
+})
 
 test('build tools place from the mod list, edit properties, save/reopen, undo and erase', async ({ page }, testInfo) => {
 	const { file, edits } = await editableFixture(page)

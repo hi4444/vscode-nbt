@@ -27,7 +27,7 @@ Run **NBT Viewer: New NBT Structure** from the Command Palette, choose the Minec
 
 Open **Build** in the 3D view. Search the selected instance's block IDs or filter by namespace, choose a block and set its available properties. **Place** adds a block against the face you click, or on the floor of an empty structure. **Replace** changes the clicked block and **Erase** removes it. Coordinates also let you set or remove a specific position. **Select** returns to inspection. Save with **Ctrl+S**, undo with **Ctrl+Z**, and redo through VS Code's usual command.
 
-The list combines vanilla registry blocks with the selected pack's indexed blockstates, including AE2 cable brushes with initialized cable-bus NBT. Mod property choices come from static blockstate assets and may omit properties used only by game logic. Other block entities do not receive automatically generated inventories or machine configuration. Build tools edit Java structure NBT with one palette; schematic, region and multiple-palette files retain their existing viewers and editors.
+The list combines vanilla registry blocks and blockstate assets (including propertyless blocks such as white concrete) with the selected pack's indexed blockstates, including AE2 cable brushes with initialized cable-bus NBT. Mod property choices come from static blockstate assets and may omit properties used only by game logic. Other block entities do not receive automatically generated inventories or machine configuration. Build tools edit Java structure NBT with one palette; schematic, region and multiple-palette files retain their existing viewers and editors.
 
 Click the scene to enable movement keys. Movement and dragging stop when focus leaves the canvas, the viewer is hidden, or a pointer gesture is cancelled, so typing in the block search does not move the camera.
 
@@ -69,7 +69,7 @@ npm run package
 
 On Windows browser tests default to installed Edge; set `NBT_BROWSER_CHANNEL=chromium` to use Playwright Chromium. `npm run dev` watches the two existing Rollup entry points. Run the extension in a VS Code Extension Development Host using this folder.
 
-Packaging produces `vscode-nbt-0.11.2.vsix`. In VS Code run **Extensions: Install from VSIX…**, choose the file, reload VS Code, then select an instance. Disable the upstream NBT Viewer while testing this fork because the editor ID is intentionally preserved. Packaging does not publish to the Marketplace. This fork is not an official upstream release.
+Packaging produces `vscode-nbt-0.11.3.vsix`. In VS Code run **Extensions: Install from VSIX…**, choose the file, reload VS Code, then select an instance. Disable the upstream NBT Viewer while testing this fork because the editor ID is intentionally preserved. Packaging does not publish to the Marketplace. This fork is not an official upstream release.
 
 See [implementation notes](docs/IMPLEMENTATION.md) and [reproducible test fixtures](docs/TESTING.md). The MIT license and upstream attribution are retained.
 
